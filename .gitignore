@@ -1,0 +1,21 @@
+
+**/build/
+# JS build related
+**/node_modules/
+yarn-debug.log*
+yarn-error.log*
+.next
+
+# Common IDEs and editors
+**/.idea
+.vscode
+.history
+*.swp
+.envrc
+
+# Common file browsers
+.DS_Store
+Thumbs.db*
+
+# Do not ignore any .gitkeep files which are there to keep directories
+!**/.gitkeep
