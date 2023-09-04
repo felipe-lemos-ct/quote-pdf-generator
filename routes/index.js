@@ -1,17 +1,20 @@
-const express = require("express");
-const pdfService = require("../service/pdf-service");
+import express from "express";
+import { buildPDF } from "../service/pdf-service.js";
 
 const router = express.Router();
+
 router.get("/quote", (req, res, next) => {
+  const orderId = req.query.orderId;
   const stream = res.writeHead(200, {
     "Content-Type": "application/pdf",
     "Content-Disposition": "attachment;filename=quote.pdf",
   });
 
-  pdfService.buildPDF(
+  buildPDF(
     (chunk) => stream.write(chunk),
-    () => stream.end()
+    () => stream.end(),
+    orderId
   );
 });
 
-module.exports = router;
+export default router;

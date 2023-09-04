@@ -1,6 +1,6 @@
-const PDFDocument = require("pdfkit");
-const axios = require("axios");
-const doc = require("pdfkit");
+import PDFDocument from "pdfkit";
+import axios from "axios";
+import { fetchCt } from "../commercetools/auth.js";
 
 async function fetchImage(src) {
   const image = await axios.get(src, {
@@ -9,28 +9,28 @@ async function fetchImage(src) {
   return image.data;
 }
 
-function generateHeader(doc, xInitial, quoteData) {
+function generateHeader(doc, xInitial, headerData) {
   doc
     .fontSize(8)
-    .text(`Estimation N° ${quoteData.quoteNumber}`, xInitial)
-    .text(`Estimation du ${quoteData.quoteDate}`, { align: "center" })
+    .text(`Estimation N° ${headerData.quoteNumber}`, xInitial)
+    .text(`Estimation du ${headerData.quoteDate}`, { align: "center" })
     .moveDown(0.1)
     .font("Helvetica-Bold")
     .fontSize(8)
     .text(`Ce devis est émis par la société REPARAUTO`, { align: "center" })
     .moveDown()
-    .image(quoteData.logo, {
+    .image(headerData.logo, {
       width: 110,
     })
     .moveDown()
     .font("Helvetica")
     .fillColor("#444444")
     .fontSize(8)
-    .text("12 rue des entrepeneurs")
-    .text("91380 Chilly-Mazarin")
-    .text("Tél : 0169798900")
+    .text(headerData.addressLine1)
+    .text(headerData.addressLine2)
+    .text(`Tél : ${headerData.tel}`)
     .text("Fax: ")
-    .text("Email: y-gagnepain@autodistribution.com")
+    .text(`Email: ${headerData.email}`)
     .text("N° Siret : 96750566000068")
     .text("Code APE: ")
     .moveDown();
@@ -113,7 +113,7 @@ function generateLineItemsTitleSection(doc, xInitial) {
     .moveDown();
 }
 
-function generateLineItemRow(doc, xInitial, yPosition, item) {
+function generateLineItemRow(doc, xInitial, yPosition, item, language) {
   doc
     .fontSize(9)
     .polygon(
@@ -123,8 +123,8 @@ function generateLineItemRow(doc, xInitial, yPosition, item) {
       [559, yPosition - 10]
     )
     .stroke()
-    .text(item.sku, xInitial, yPosition, { width: 90, align: "center" })
-    .text(item.name, xInitial + 100, yPosition, {
+    .text(item.variant.sku, xInitial, yPosition, { width: 90, align: "center" })
+    .text(item.name?.[language], xInitial + 100, yPosition, {
       width: 200,
       align: "center",
     })
@@ -236,8 +236,8 @@ function generateFinalCommentsSection(doc, yPosition, xInitial) {
     .text(
       `Pour acceptation.
       Mention manuscrite «Bon pour accord» :
-      
-    Le :`,
+
+Le :`,
       xInitial + 330,
       yPosition + 20,
       {
@@ -248,89 +248,60 @@ function generateFinalCommentsSection(doc, yPosition, xInitial) {
       }
     );
 }
-async function buildPDF(dataCallback, endCallback, quote) {
+async function buildPDF(dataCallback, endCallback, orderNumber) {
+  const order = await fetchCt(`orders/${orderNumber}`, {
+    method: "GET",
+  })
+    .then((response) => response.json())
+    .then((response) => {
+      return response;
+    });
+
   const logo = await fetchImage(
     "http://www3.autossimo.com/build/images/actu/logo.png"
   );
 
-  const finalquote = {
+  const inputDate = new Date(order.createdAt);
+  const day = String(inputDate.getDate()).padStart(2, "0");
+  const month = String(inputDate.getMonth() + 1).padStart(2, "0");
+  const year = inputDate.getFullYear();
+  const formattedDate = `${day}/${month}/${year}`;
+
+  const headerData = {
     logo: logo,
-    quoteNumber: 5765906,
-    quoteDate: "15/06/2023",
+    quoteNumber: order.id,
+    quoteDate: formattedDate,
+    addressLine1:
+      order.billingAddress.streetNumber + " " + order.billingAddress.streetName,
+    addressLine2:
+      order.billingAddress.postalCode + "" + order.billingAddress.city,
+    tel: order.billingAddress.phone,
+    email: order.customerEmail,
   };
+
+  let language = "";
+  switch (order.shippingAddress.country) {
+    case "FR":
+      language = "fr-FR";
+      break;
+    case "US":
+      language = "en-US";
+      break;
+    case "DE":
+      language = "de-DE";
+      break;
+    default:
+      language = "fr-FR";
+  }
 
   const yInitial = 40;
   const xInitial = 40;
-  const lineItems = [
-    {
-      sku: "ISOTECH- ISLR",
-      name: "5W30 HITEC C3 V 5L HUILE MOTEUR VL",
-      quantity: "2.00",
-      unitPrice: "3.40",
-      netPrice: "6.80",
-      montantHt: "6.80",
-      montantTTC: "8.16",
-    },
-    {
-      sku: "ISOTECH - PRODUITS1",
-      name: "ISOTECH NETTOYANT DE FREIN 600ML LITHO",
-      quantity: "1.00",
-      unitPrice: "5.55",
-      netPrice: "5.55",
-      montantHt: "5.55",
-      montantTTC: "6.66",
-    },
-    {
-      sku: "ISOTECH PLAQUETTES1",
-      name: "PLAQUETTES DE FREIN AV",
-      quantity: "1.00",
-      unitPrice: "73.28",
-      netPrice: "73.28",
-      montantHt: "73.28",
-      montantTTC: "87.94",
-    },
-    {
-      sku: "M2.0101",
-      name: "Dépose et Repose - Plaquettes de frein AV (toutes) - roues enlevées",
-      quantity: "0.30",
-      unitPrice: "69.00",
-      netPrice: "20.70",
-      montantHt: "20.70",
-      montantTTC: "24.84",
-    },
-    {
-      sku: "ISOTECH - PRODUITS1",
-      name: "ISOTECH NETTOYANT DE FREIN 600ML LITHO",
-      quantity: "1.00",
-      unitPrice: "5.55",
-      netPrice: "5.55",
-      montantHt: "5.55",
-      montantTTC: "6.66",
-    },
-    {
-      sku: "ISOTECH PLAQUETTES1",
-      name: "PLAQUETTES DE FREIN AV",
-      quantity: "1.00",
-      unitPrice: "73.28",
-      netPrice: "73.28",
-      montantHt: "73.28",
-      montantTTC: "87.94",
-    },
-    {
-      sku: "M2.0101",
-      name: "Dépose et Repose - Plaquettes de frein AV (toutes) - roues enlevées",
-      quantity: "0.30",
-      unitPrice: "69.00",
-      netPrice: "20.70",
-      montantHt: "20.70",
-      montantTTC: "24.84",
-    },
-  ];
+  const lineItems = order.lineItems;
 
   const doc = new PDFDocument({ size: "A4" });
   doc.on("data", dataCallback);
   doc.on("end", endCallback);
-  generateHeader(doc, xInitial, finalquote);
+  generateHeader(doc, xInitial, headerData);
   doc.fontSize(10).rect(360, 117, 200, 15).fill("#0f5e96");
   generateClientSection(doc);
   doc.fontSize(10).rect(xInitial, 237, 520, 15).fill("#0f5e96");
@@ -339,7 +310,7 @@ async function buildPDF(dataCallback, endCallback, quote) {
   generateLineItemsTitleSection(doc, xInitial);
   let yPosition = 370;
   lineItems.map((item) => {
-    generateLineItemRow(doc, xInitial, yPosition, item);
+    generateLineItemRow(doc, xInitial, yPosition, item, language);
     yPosition += 30;
     if (yPosition > 725) {
       doc.addPage();
@@ -368,4 +339,4 @@ async function buildPDF(dataCallback, endCallback, quote) {
   doc.end();
 }
 
-module.exports = { buildPDF };
+export { buildPDF };
