@@ -132,22 +132,37 @@ function generateLineItemRow(doc, xInitial, yPosition, item, language) {
       width: 25,
       align: "center",
     })
-    .text(item.unitPrice, xInitial + 325, yPosition, {
+    .text(item.price.value.centAmount / 100, xInitial + 325, yPosition, {
       width: 50,
       align: "center",
     })
-    .text(item.netPrice, xInitial + 375, yPosition, {
-      width: 30,
-      align: "center",
-    })
-    .text(item.montantHt, xInitial + 405, yPosition, {
-      width: 50,
-      align: "center",
-    })
-    .text(item.montantTTC, xInitial + 465, yPosition, {
-      width: 50,
-      align: "center",
-    });
+    .text(
+      item.taxedPrice.totalNet.centAmount / 100,
+      xInitial + 375,
+      yPosition,
+      {
+        width: 30,
+        align: "center",
+      }
+    )
+    .text(
+      item.taxedPrice.totalNet.centAmount / 100,
+      xInitial + 405,
+      yPosition,
+      {
+        width: 50,
+        align: "center",
+      }
+    )
+    .text(
+      item.taxedPrice.totalGross.centAmount / 100,
+      xInitial + 465,
+      yPosition,
+      {
+        width: 50,
+        align: "center",
+      }
+    );
 }
 
 function generateTotalTitleSection(doc, yPosition, xInitial) {
@@ -260,6 +275,8 @@ async function buildPDF(dataCallback, endCallback, orderNumber) {
   const logo = await fetchImage(
     "http://www3.autossimo.com/build/images/actu/logo.png"
   );
+
+  console.log(JSON.stringify(order));
 
   const inputDate = new Date(order.createdAt);
   const day = String(inputDate.getDate()).padStart(2, "0");
