@@ -12,6 +12,7 @@ yarn-error.log*
 .history
 *.swp
 .envrc
+.env
 
 # Common file browsers
 .DS_Store
