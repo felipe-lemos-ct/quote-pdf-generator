@@ -23,6 +23,8 @@ function generateHeader(doc, xInitial, headerData) {
       width: 110,
     })
     .moveDown()
+    .text(headerData.companyName)
+    .moveDown()
     .font("Helvetica")
     .fillColor("#444444")
     .fontSize(8)
@@ -31,12 +33,12 @@ function generateHeader(doc, xInitial, headerData) {
     .text(`Tél : ${headerData.tel}`)
     .text("Fax: ")
     .text(`Email: ${headerData.email}`)
-    .text("N° Siret : 96750566000068")
+    .text(`N° Siret :${headerData.siret}`)
     .text("Code APE: ")
     .moveDown();
 }
 
-function generateClientSection(doc) {
+function generateClientSection(doc, clientData) {
   doc
     .polygon([360, 117], [360, 220], [560, 220], [560, 117])
     .stroke()
@@ -44,13 +46,19 @@ function generateClientSection(doc) {
     .fillColor("white")
     .text("Client", 360, 120, { width: 200, align: "center" })
     .fillColor("black")
-    .text("Gagnepain Yann", 365, 135, { width: 90, align: "left" })
-    .text("15 rue de l'écluse", 365, 150, { width: 90, align: "left" })
-    .text("77000 MELUN", 365, 160, { width: 90, align: "left" })
-    .text("Tél: 0629634435", 365, 180, { width: 90, align: "left" })
-    .text("Mobile: ", 425, 180, { width: 90, align: "right" })
-    .text("Fax: ", 365, 190, { width: 90, align: "left" })
-    .text("Email : ", 365, 200, { width: 90, align: "left" });
+    .text(clientData.name, 365, 135, { width: 90, align: "left" })
+    .text(clientData.addressLine1, 365, 150, { width: 90, align: "left" })
+    .text(clientData.addressLine2, 365, 160, { width: 90, align: "left" })
+    .text(`Tél: ${clientData.tel} `, 365, 180, { width: 90, align: "left" })
+    .text(`Mobile: ${clientData.mobile}`, 425, 180, {
+      width: 90,
+      align: "right",
+    })
+    .text(`Fax: ${clientData.fax}`, 365, 190, { width: 90, align: "left" })
+    .text(`Email : ${clientData.email}`, 365, 200, {
+      width: 90,
+      align: "left",
+    });
 }
 
 function generateVehiculeSection(doc, xInitial) {
@@ -184,7 +192,7 @@ function generateTotalTitleSection(doc, yPosition, xInitial) {
     .font("Helvetica");
 }
 
-function generateTotalDataSection(doc, yPosition, xInitial) {
+function generateTotalDataSection(doc, yPosition, xInitial, totalData) {
   doc
     .fontSize(10)
     .polygon(
@@ -195,13 +203,19 @@ function generateTotalDataSection(doc, yPosition, xInitial) {
     )
     .stroke()
     .fillColor("black")
-    .text("310.07 EUR", xInitial, yPosition, { width: 100, align: "center" })
-    .text("20 %", xInitial + 100, yPosition, { width: 40, align: "center" })
-    .text("62.01", xInitial + 140, yPosition, {
+    .text(`${totalData.totalPrice}`, xInitial, yPosition, {
       width: 100,
       align: "center",
     })
-    .text("372.09 EUR", xInitial + 240, yPosition, {
+    .text(`${totalData.orderTVA}`, xInitial + 100, yPosition, {
+      width: 40,
+      align: "center",
+    })
+    .text(`${totalData.totalTVA}`, xInitial + 140, yPosition, {
+      width: 100,
+      align: "center",
+    })
+    .text(`${totalData.grandTotal}`, xInitial + 240, yPosition, {
       width: 100,
       align: "center",
     });
@@ -272,11 +286,23 @@ async function buildPDF(dataCallback, endCallback, orderNumber) {
       return response;
     });
 
-  const logo = await fetchImage(
-    "http://www3.autossimo.com/build/images/actu/logo.png"
-  );
-
   console.log(JSON.stringify(order));
+
+  const customerId = order.customerId;
+
+  console.log("-----------------");
+
+  const customer = await fetchCt(`customers/${customerId}`, {
+    method: "GET",
+  })
+    .then((response) => response.json())
+    .then((response) => {
+      return response;
+    });
+
+  console.log(JSON.stringify(customer));
+
+  const logo = await fetchImage(customer.custom.fields.logoUrl);
 
   const inputDate = new Date(order.createdAt);
   const day = String(inputDate.getDate()).padStart(2, "0");
@@ -289,11 +315,38 @@ async function buildPDF(dataCallback, endCallback, orderNumber) {
     quoteNumber: order.id,
     quoteDate: formattedDate,
     addressLine1:
-      order.billingAddress.streetNumber + " " + order.billingAddress.streetName,
+      customer.addresses[0].streetNumber +
+      " " +
+      customer.addresses[0].streetName,
     addressLine2:
-      order.billingAddress.postalCode + "" + order.billingAddress.city,
-    tel: order.billingAddress.phone,
-    email: order.customerEmail,
+      customer.addresses[0].postalCode + " " + customer.addresses[0].city,
+    tel: customer.addresses[0].phone,
+    email: customer.addresses[0].email,
+    siret: customer.vatId,
+    companyName: customer.companyName,
+  };
+
+  const clientData = {
+    name: customer.firstName + " " + customer.lastName,
+    addressLine1: `15 rue de l'écluse`,
+    addressLine2: `77000 MELUN`,
+    tel: `0629634435`,
+    mobile: ``,
+    fax: ``,
+    email: ``,
+  };
+
+  const totalData = {
+    totalPrice: `${order.totalPrice.centAmount / 100} ${
+      order.totalPrice.currencyCode
+    }`,
+    orderTVA: `20 %`,
+    totalTVA: `${order.taxedPrice.totalTax.centAmount / 100} ${
+      order.taxedPrice.totalTax.currencyCode
+    }`,
+    grandTotal: `${order.taxedPrice.totalGross.centAmount / 100} ${
+      order.taxedPrice.totalGross.currencyCode
+    }`,
   };
 
   let language = "";
@@ -320,7 +373,7 @@ async function buildPDF(dataCallback, endCallback, orderNumber) {
   doc.on("end", endCallback);
   generateHeader(doc, xInitial, headerData);
   doc.fontSize(10).rect(360, 117, 200, 15).fill("#0f5e96");
-  generateClientSection(doc);
+  generateClientSection(doc, clientData);
   doc.fontSize(10).rect(xInitial, 237, 520, 15).fill("#0f5e96");
   generateVehiculeSection(doc, xInitial);
   doc.fontSize(10).rect(xInitial, 328, 520, 30).fill("#d0e4f6");
@@ -342,7 +395,7 @@ async function buildPDF(dataCallback, endCallback, orderNumber) {
     .fill("#d0e4f6");
   generateTotalTitleSection(doc, yPosition, xInitial);
   yPosition += 15;
-  generateTotalDataSection(doc, yPosition, xInitial);
+  generateTotalDataSection(doc, yPosition, xInitial, totalData);
   yPosition += 50;
   doc
     .fontSize(10)
