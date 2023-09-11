@@ -61,7 +61,7 @@ function generateClientSection(doc, clientData) {
     });
 }
 
-function generateVehiculeSection(doc, xInitial) {
+function generateVehiculeSection(doc, xInitial, vehiculeData) {
   doc
     .polygon([xInitial, 237], [xInitial, 315], [559, 315], [559, 237])
     .stroke()
@@ -70,23 +70,24 @@ function generateVehiculeSection(doc, xInitial) {
     .fillColor("black")
     .moveDown()
     .text("Marque", xInitial, 255)
-    .text("PEUGEOT", 160, 255)
+    .text(vehiculeData.marque, 160, 255)
     .text("Modèle: ", 250, 255)
-    .text("5008 1.6 HDI 114", 320, 255)
+    .text(vehiculeData.model, 320, 255)
     .text("Puissance: ", 440, 255)
-    .text("6 ", 510, 255)
+    .text(vehiculeData.puissance, 500, 255)
     .moveDown()
     .text("Type mine", xInitial, 270)
-    .text("NC", 160, 270)
+    .text(vehiculeData.type_myne, 160, 270)
     .text("Carrosserie: ", 250, 270)
-    .text("MO", 320, 270)
+    .text(vehiculeData.carrosserie, 320, 270)
     .moveDown()
     .text("Immatriculation:", xInitial, 285)
-    .text("CX317CH", 160, 285)
+    .text(vehiculeData.immatriculation, 160, 285)
     .text("Kilométrage: ", 250, 285)
-    .text("198500 Km", 320, 285)
+    .text(vehiculeData.kilometrage, 320, 285)
     .moveDown()
     .text("N° Série : ", 250, 300)
+    .text(vehiculeData.n_serie, 320, 300)
     .moveDown();
 }
 
@@ -221,6 +222,12 @@ function generateTotalDataSection(doc, yPosition, xInitial, totalData) {
     });
 }
 
+function getAttributeValue(object, name) {
+  const found = object.find((element) => element.name === name);
+
+  return found.value;
+}
+
 function generateFinalCommentsSection(doc, yPosition, xInitial) {
   doc
     .fontSize(10)
@@ -290,7 +297,30 @@ async function buildPDF(dataCallback, endCallback, orderNumber) {
 
   const customerId = order.customerId;
 
+  console.log(order.lineItems[0].variant.attributes);
+
+  const vehiculeData = {
+    marque: getAttributeValue(order.lineItems[0].variant.attributes, "marque"),
+    type_myne: getAttributeValue(
+      order.lineItems[0].variant.attributes,
+      "type-mine"
+    ),
+    immatriculation: getAttributeValue(
+      order.lineItems[0].variant.attributes,
+      "plaque-immat"
+    ),
+    model: getAttributeValue(order.lineItems[0].variant.attributes, "modele"),
+    carrosserie: "MO",
+    kilometrage: "195666",
+    n_serie: "",
+    puissance: getAttributeValue(
+      order.lineItems[0].variant.attributes,
+      "puissance-chvx"
+    ),
+  };
+
   console.log("-----------------");
+  console.log(vehiculeData);
 
   const customer = await fetchCt(`customers/${customerId}`, {
     method: "GET",
@@ -302,7 +332,10 @@ async function buildPDF(dataCallback, endCallback, orderNumber) {
 
   console.log(JSON.stringify(customer));
 
-  const logo = await fetchImage(customer.custom.fields.logoUrl);
+  const logo = await fetchImage(
+    customer?.custom?.fields?.logoUrl ||
+      "https://www3.autossimo.com/build/images/actu/logo.png"
+  );
 
   const inputDate = new Date(order.createdAt);
   const day = String(inputDate.getDate()).padStart(2, "0");
@@ -375,7 +408,7 @@ async function buildPDF(dataCallback, endCallback, orderNumber) {
   doc.fontSize(10).rect(360, 117, 200, 15).fill("#0f5e96");
   generateClientSection(doc, clientData);
   doc.fontSize(10).rect(xInitial, 237, 520, 15).fill("#0f5e96");
-  generateVehiculeSection(doc, xInitial);
+  generateVehiculeSection(doc, xInitial, vehiculeData);
   doc.fontSize(10).rect(xInitial, 328, 520, 30).fill("#d0e4f6");
   generateLineItemsTitleSection(doc, xInitial);
   let yPosition = 370;
