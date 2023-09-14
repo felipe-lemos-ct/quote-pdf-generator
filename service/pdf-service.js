@@ -383,7 +383,7 @@ async function buildPDF(dataCallback, endCallback, orderNumber) {
       " " +
       businessUnit.addresses[0].city,
     tel: businessUnitAssociate.addresses[0].phone,
-    email: businessUnitAssociate.addresses[0].email,
+    email: businessUnitAssociate.email,
     siret: businessUnitAssociate.vatId,
     companyName: businessUnitAssociate.companyName,
   };
