@@ -22,7 +22,7 @@ function generateHeader(doc, xInitial, headerData) {
     })
     .moveDown()
     .image(headerData.logo, {
-      width: 110,
+      fit: [50, 100],
     })
     .moveDown()
     .text(headerData.companyName)
@@ -47,16 +47,16 @@ function generateClientSection(doc, clientData) {
     .fillColor("white")
     .text("Client", 360, 120, { width: 200, align: "center" })
     .fillColor("black")
-    .text(clientData.name, 365, 135, { width: 90, align: "left" })
-    .text(clientData.addressLine1, 365, 150, { width: 90, align: "left" })
-    .text(clientData.addressLine2, 365, 160, { width: 90, align: "left" })
-    .text(`Tél: ${clientData.tel} `, 365, 180, { width: 90, align: "left" })
-    .text(`Mobile: ${clientData.mobile}`, 405, 180, {
+    .text(clientData.name, 365, 135, { width: 300, align: "left" })
+    .text(clientData.addressLine1, 365, 150, { width: 300, align: "left" })
+    .text(clientData.addressLine2, 365, 160, { width: 300, align: "left" })
+    .text(`Tél: ${clientData.tel} `, 365, 180, { width: 100, align: "left" })
+    .text(`Mobile: ${clientData.mobile}`, 365, 190, {
       width: 150,
-      align: "right",
+      align: "left",
     })
-    .text(`Fax: ${clientData.fax}`, 365, 190, { width: 90, align: "left" })
-    .text(`Email : ${clientData.email}`, 365, 200, {
+    .text(`Fax: ${clientData.fax}`, 365, 200, { width: 90, align: "left" })
+    .text(`Email : ${clientData.email}`, 365, 210, {
       width: 200,
       align: "left",
     });
