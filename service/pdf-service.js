@@ -12,12 +12,14 @@ async function fetchImage(src) {
 function generateHeader(doc, xInitial, headerData) {
   doc
     .fontSize(8)
-    .text(`Estimation N° ${headerData.quoteNumber}`, xInitial)
+    .text(`Estimation N° ${headerData.orderNumber}`, xInitial)
     .text(`Estimation du ${headerData.quoteDate}`, { align: "center" })
     .moveDown(0.1)
     .font("Helvetica-Bold")
     .fontSize(8)
-    .text(`Ce devis est émis par la société REPARAUTO`, { align: "center" })
+    .text(`Ce devis est émis par la société ${headerData.businessUnitName}`, {
+      align: "center",
+    })
     .moveDown()
     .image(headerData.logo, {
       width: 110,
@@ -131,7 +133,10 @@ function generateLineItemRow(doc, xInitial, yPosition, item, language) {
       [559, yPosition - 10]
     )
     .stroke()
-    .text(item.variant.sku, xInitial, yPosition, { width: 90, align: "center" })
+    .text(item?.variant?.sku || item?.sku || "", xInitial, yPosition, {
+      width: 90,
+      align: "center",
+    })
     .text(item.name?.[language], xInitial + 100, yPosition, {
       width: 200,
       align: "center",
@@ -140,10 +145,15 @@ function generateLineItemRow(doc, xInitial, yPosition, item, language) {
       width: 25,
       align: "center",
     })
-    .text(item.price.value.centAmount / 100, xInitial + 325, yPosition, {
-      width: 50,
-      align: "center",
-    })
+    .text(
+      item?.price?.value?.centAmount / 100 || item.money.centAmount / 100,
+      xInitial + 325,
+      yPosition,
+      {
+        width: 50,
+        align: "center",
+      }
+    )
     .text(
       item.taxedPrice.totalNet.centAmount / 100,
       xInitial + 375,
@@ -371,34 +381,36 @@ async function buildPDF(dataCallback, endCallback, orderNumber) {
 
   //Customer on the order is gonna be the buyer
   const headerData = {
+    orderNumber: order.orderNumber || "9999",
+    businessUnitName: businessUnit?.name,
     logo: logo,
     quoteNumber: order.id,
     quoteDate: formattedDate,
     addressLine1:
-      businessUnit.addresses[0].streetNumber +
+      businessUnit?.addresses[0]?.streetNumber +
       " " +
-      businessUnit.addresses[0].streetName,
+      businessUnit?.addresses[0]?.streetName,
     addressLine2:
-      businessUnit.addresses[0].postalCode +
+      businessUnit?.addresses[0]?.postalCode +
       " " +
-      businessUnit.addresses[0].city,
-    tel: businessUnitAssociate.addresses[0].phone,
-    email: businessUnitAssociate.email,
-    siret: businessUnitAssociate.vatId,
-    companyName: businessUnitAssociate.companyName,
+      businessUnit?.addresses[0]?.city,
+    tel: businessUnitAssociate?.addresses[0]?.phone,
+    email: businessUnitAssociate?.email,
+    siret: businessUnitAssociate?.vatId,
+    companyName: businessUnitAssociate?.companyName,
   };
 
   //Client will be the custom info
   const clientData = {
-    name: customer.firstName + " " + customer.lastName,
+    name: customer?.firstName + " " + customer?.lastName,
     addressLine1:
-      customer.addresses[0].streetNumber +
+      customer?.addresses[0]?.streetNumber +
       " " +
-      customer.addresses[0].streetName,
+      customer?.addresses[0]?.streetName,
     addressLine2:
-      customer.addresses[0].postalCode + " " + customer.addresses[0].city,
-    tel: customer.addresses[0].phone,
-    mobile: customer.addresses[0].mobile,
+      customer?.addresses[0]?.postalCode + " " + customer?.addresses[0]?.city,
+    tel: customer?.addresses[0]?.phone,
+    mobile: customer?.addresses[0]?.mobile,
     fax: customer.addresses[0].fax || ``,
     email: customer.email || ``,
   };
@@ -433,7 +445,7 @@ async function buildPDF(dataCallback, endCallback, orderNumber) {
 
   const yInitial = 40;
   const xInitial = 40;
-  const lineItems = order.lineItems;
+  const lineItems = [...order.lineItems, ...order.customLineItems];
 
   const doc = new PDFDocument({ size: "A4" });
   doc.on("data", dataCallback);
