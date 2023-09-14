@@ -124,6 +124,15 @@ function generateLineItemsTitleSection(doc, xInitial) {
 }
 
 function generateLineItemRow(doc, xInitial, yPosition, item, language) {
+  let equipmentier;
+  if (item.variant) {
+    equipmentier = getAttributeValue(
+      item?.variant?.attributes,
+      "marque-eligible"
+    );
+  } else {
+    equipmentier = item?.sku;
+  }
   doc
     .fontSize(9)
     .polygon(
@@ -133,7 +142,7 @@ function generateLineItemRow(doc, xInitial, yPosition, item, language) {
       [559, yPosition - 10]
     )
     .stroke()
-    .text(item?.variant?.sku || item?.sku || "", xInitial, yPosition, {
+    .text(equipmentier || "", xInitial, yPosition, {
       width: 90,
       align: "center",
     })
