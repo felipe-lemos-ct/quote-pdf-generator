@@ -131,7 +131,7 @@ function generateLineItemRow(doc, xInitial, yPosition, item, language) {
       "marque-eligible"
     );
   } else {
-    equipmentier = item?.sku;
+    equipmentier = item?.slug;
   }
   doc
     .fontSize(9)
