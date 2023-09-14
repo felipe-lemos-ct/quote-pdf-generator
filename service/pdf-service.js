@@ -359,7 +359,7 @@ async function buildPDF(dataCallback, endCallback, orderNumber) {
   console.log(JSON.stringify(businessUnitAssociate));
 
   const logo = await fetchImage(
-    businessUnitAssociate?.custom?.fields?.logoUrl ||
+    businessUnit?.custom?.fields?.logoUrl ||
       "https://www3.autossimo.com/build/images/actu/logo.png"
   );
 
