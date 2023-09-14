@@ -24,7 +24,6 @@ function generateHeader(doc, xInitial, headerData) {
     })
     .moveDown()
     .text(headerData.companyName)
-    .moveDown()
     .font("Helvetica")
     .fillColor("#444444")
     .fontSize(8)
@@ -50,13 +49,13 @@ function generateClientSection(doc, clientData) {
     .text(clientData.addressLine1, 365, 150, { width: 90, align: "left" })
     .text(clientData.addressLine2, 365, 160, { width: 90, align: "left" })
     .text(`Tél: ${clientData.tel} `, 365, 180, { width: 90, align: "left" })
-    .text(`Mobile: ${clientData.mobile}`, 425, 180, {
-      width: 90,
+    .text(`Mobile: ${clientData.mobile}`, 405, 180, {
+      width: 150,
       align: "right",
     })
     .text(`Fax: ${clientData.fax}`, 365, 190, { width: 90, align: "left" })
     .text(`Email : ${clientData.email}`, 365, 200, {
-      width: 90,
+      width: 200,
       align: "left",
     });
 }
@@ -292,12 +291,10 @@ async function buildPDF(dataCallback, endCallback, orderNumber) {
     .then((response) => {
       return response;
     });
-
+  console.log("Order");
   console.log(JSON.stringify(order));
 
-  const customerId = order.customerId;
-
-  console.log(order.lineItems[0].variant.attributes);
+  const customerId = order.custom.fields["end-customer"];
 
   const vehiculeData = {
     marque: getAttributeValue(order.lineItems[0].variant.attributes, "marque"),
@@ -320,8 +317,9 @@ async function buildPDF(dataCallback, endCallback, orderNumber) {
   };
 
   console.log("-----------------");
+  console.log("Vehicule");
   console.log(vehiculeData);
-
+  console.log("-----------------");
   const customer = await fetchCt(`customers/${customerId}`, {
     method: "GET",
   })
@@ -330,10 +328,38 @@ async function buildPDF(dataCallback, endCallback, orderNumber) {
       return response;
     });
 
+  console.log("Customer:");
   console.log(JSON.stringify(customer));
+  console.log("-----------------");
+
+  const businessUnitKey = order.businessUnit.key;
+
+  const businessUnit = await fetchCt(`business-units/key=${businessUnitKey}`, {
+    method: "GET",
+  })
+    .then((response) => response.json())
+    .then((response) => {
+      return response;
+    });
+
+  console.log("Business Unit:");
+  console.log(JSON.stringify(businessUnit));
+  console.log("-----------------");
+
+  const businessUnitAssociate = await fetchCt(
+    `customers/${businessUnit.associates[0].customer.id}`,
+    { method: "GET" }
+  )
+    .then((response) => response.json())
+    .then((response) => {
+      return response;
+    });
+
+  console.log("Business unit associate:");
+  console.log(JSON.stringify(businessUnitAssociate));
 
   const logo = await fetchImage(
-    customer?.custom?.fields?.logoUrl ||
+    businessUnitAssociate?.custom?.fields?.logoUrl ||
       "https://www3.autossimo.com/build/images/actu/logo.png"
   );
 
@@ -343,10 +369,28 @@ async function buildPDF(dataCallback, endCallback, orderNumber) {
   const year = inputDate.getFullYear();
   const formattedDate = `${day}/${month}/${year}`;
 
+  //Customer on the order is gonna be the buyer
   const headerData = {
     logo: logo,
     quoteNumber: order.id,
     quoteDate: formattedDate,
+    addressLine1:
+      businessUnit.addresses[0].streetNumber +
+      " " +
+      businessUnit.addresses[0].streetName,
+    addressLine2:
+      businessUnit.addresses[0].postalCode +
+      " " +
+      businessUnit.addresses[0].city,
+    tel: businessUnitAssociate.addresses[0].phone,
+    email: businessUnitAssociate.addresses[0].email,
+    siret: businessUnitAssociate.vatId,
+    companyName: businessUnitAssociate.companyName,
+  };
+
+  //Client will be the custom info
+  const clientData = {
+    name: customer.firstName + " " + customer.lastName,
     addressLine1:
       customer.addresses[0].streetNumber +
       " " +
@@ -354,19 +398,9 @@ async function buildPDF(dataCallback, endCallback, orderNumber) {
     addressLine2:
       customer.addresses[0].postalCode + " " + customer.addresses[0].city,
     tel: customer.addresses[0].phone,
-    email: customer.addresses[0].email,
-    siret: customer.vatId,
-    companyName: customer.companyName,
-  };
-
-  const clientData = {
-    name: customer.firstName + " " + customer.lastName,
-    addressLine1: `15 rue de l'écluse`,
-    addressLine2: `77000 MELUN`,
-    tel: `0629634435`,
-    mobile: ``,
-    fax: ``,
-    email: ``,
+    mobile: customer.addresses[0].mobile,
+    fax: customer.addresses[0].fax || ``,
+    email: customer.email || ``,
   };
 
   const totalData = {
